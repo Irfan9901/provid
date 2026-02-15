@@ -1,4 +1,4 @@
-name: Build Tauri App (ALL OS)
+name: Build Provid
 
 on:
 push:
@@ -7,53 +7,27 @@ workflow_dispatch:
 
 jobs:
 build:
-
 strategy:
-  fail-fast: false
-  matrix:
-    include:
-
-      # ---------- MAC UNIVERSAL ----------
-      - os: macos-latest
-        target: universal-apple-darwin
-        name: mac-universal
-
-      # ---------- WINDOWS ----------
-      - os: windows-latest
-        target: x86_64-pc-windows-msvc
-        name: windows
-
-      # ---------- LINUX ----------
-      - os: ubuntu-latest
-        target: x86_64-unknown-linux-gnu
-        name: linux
+fail-fast: false
+matrix:
+os: [macos-latest, windows-latest, ubuntu-latest]
 
 runs-on: ${{ matrix.os }}
 
 steps:
-  - uses: actions/checkout@v4
+  - name: Checkout
+    uses: actions/checkout@v4
 
-
-  # ---------------- NODE ----------------
-  - uses: actions/setup-node@v4
+  - name: Setup Node
+    uses: actions/setup-node@v4
     with:
       node-version: 20
 
-
-  # ---------------- RUST ----------------
-  - uses: dtolnay/rust-toolchain@stable
-
-
-  # ---------------- INSTALL FRONTEND ----------------
-  - run: npm install
-
-
-  # =====================================================
-  # ================= FFMPEG SETUP ======================
-  # =====================================================
+  - name: Install Rust
+    uses: dtolnay/rust-toolchain@stable
 
   # ---------- MAC ----------
-  - name: install ffmpeg mac
+  - name: Install Mac deps + ffmpeg
     if: matrix.os == 'macos-latest'
     run: |
       brew install ffmpeg
@@ -61,20 +35,19 @@ steps:
       cp $(which ffmpeg) src-tauri/bin/ffmpeg-aarch64-apple-darwin
       chmod +x src-tauri/bin/ffmpeg-aarch64-apple-darwin
 
-
   # ---------- WINDOWS ----------
-  - name: download ffmpeg windows
+  - name: Install Windows ffmpeg
     if: matrix.os == 'windows-latest'
-    shell: bash
+    shell: powershell
     run: |
-      mkdir -p src-tauri/bin
-      curl -L -o ffmpeg.zip https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip
-      unzip ffmpeg.zip
-      cp ffmpeg-*/bin/ffmpeg.exe src-tauri/bin/ffmpeg-x86_64-pc-windows-msvc.exe
-
+      Invoke-WebRequest https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip -OutFile ffmpeg.zip
+      Expand-Archive ffmpeg.zip -DestinationPath .
+      $ff = Get-ChildItem -Recurse -Filter ffmpeg.exe | Select-Object -First 1
+      New-Item -ItemType Directory -Force -Path src-tauri/bin
+      Copy-Item $ff.FullName src-tauri/bin/ffmpeg-x86_64-pc-windows-msvc.exe
 
   # ---------- LINUX ----------
-  - name: install ffmpeg linux
+  - name: Install Linux deps + ffmpeg
     if: matrix.os == 'ubuntu-latest'
     run: |
       sudo apt update
@@ -89,21 +62,15 @@ steps:
       cp $(which ffmpeg) src-tauri/bin/ffmpeg-x86_64-unknown-linux-gnu
       chmod +x src-tauri/bin/ffmpeg-x86_64-unknown-linux-gnu
 
+  - name: Install npm deps
+    run: npm install
 
-  # =====================================================
-  # ================= BUILD =============================
-  # =====================================================
-
-  - name: build tauri
+  - name: Build Tauri
     run: npm run tauri build
 
-
-  # =====================================================
-  # ================= UPLOAD ============================
-  # =====================================================
-
-  - name: upload bundle
+  - name: Upload artifacts
     uses: actions/upload-artifact@v4
     with:
-      name: app-${{ matrix.name }}
+      name: provid-${{ matrix.os }}
       path: src-tauri/target/release/bundle
+
