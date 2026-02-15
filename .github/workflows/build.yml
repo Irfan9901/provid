@@ -1,0 +1,59 @@
+name: Build Provid
+
+on:
+push:
+branches: [ main ]
+
+jobs:
+build:
+strategy:
+  matrix:
+    platform: [macos-latest, windows-latest]
+
+runs-on: ${{ matrix.platform }}
+
+steps:
+
+  - uses: actions/checkout@v4
+
+  - name: install rust
+    uses: dtolnay/rust-toolchain@stable
+
+  - name: install node
+    uses: actions/setup-node@v4
+    with:
+      node-version: 20
+
+  - name: install frontend deps
+    run: npm install
+
+  # ---------- AUTO DOWNLOAD FFMPEG ----------
+  - name: download ffmpeg mac
+    if: runner.os == 'macOS'
+    run: |
+      mkdir -p src-tauri/bin
+      curl -L https://evermeet.cx/ffmpeg/getrelease/zip -o ffmpeg.zip
+      unzip ffmpeg.zip
+      mv ffmpeg src-tauri/bin/ffmpeg
+      chmod +x src-tauri/bin/ffmpeg
+
+  - name: download ffmpeg windows
+    if: runner.os == 'Windows'
+    shell: pwsh
+    run: |
+      mkdir src-tauri/bin
+      Invoke-WebRequest https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip -OutFile ffmpeg.zip
+      Expand-Archive ffmpeg.zip
+      $ff = Get-ChildItem -Recurse -Filter ffmpeg.exe | Select-Object -First 1
+      Copy-Item $ff.FullName src-tauri/bin/ffmpeg.exe
+
+  # ---------- BUILD TAURI ----------
+  - name: build tauri
+    run: npm run tauri build
+
+  # ---------- UPLOAD RESULT ----------
+  - uses: actions/upload-artifact@v4
+    with:
+      name: provid-${{ runner.os }}
+      path: src-tauri/target/release/bundle/
+
