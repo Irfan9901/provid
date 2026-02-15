@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Provid</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="main.js" defer></script>
+</head>
+
+<body>
+  <div class="app-container">
+    <header>
+      <h1>🎬 Provid</h1>
+      <button id="themeToggle" class="theme-toggle">
+        <span id="themeIcon">🌙</span> <span id="themeText">Dark Mode</span>
+      </button>
+    </header>
+
+    <!-- Tab Navigation -->
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="stitcher-content">🎬 Stitcher</button>
+      <button class="tab-btn" data-tab="splitter-content">✂️ Splitter</button>
+    </div>
+
+    <!-- STITCHER CONTENT -->
+    <div id="stitcher-content" class="tab-content active">
+      <!-- Video Section -->
+      <div class="section">
+        <div class="section-title">
+          <div class="title-left">
+            <span>Videos</span>
+            <span id="uniqueCountBadge" class="badge">0 combinations</span>
+          </div>
+          <div class="title-actions">
+            <button id="clearVideos" class="btn-text">🗑️ Clear All</button>
+            <label class="select-all-wrapper">
+              <input type="checkbox" id="selectAllVideo"> Select All
+            </label>
+          </div>
+        </div>
+        <div id="videoDrop" class="drop-zone">
+          Drag & Drop Video Files or Click to Browse
+        </div>
+        <!-- Warning Area -->
+        <div class="alert alert-warning">
+          <span class="alert-icon">⚠️</span>
+          <div class="alert-content">
+            <strong>PENTING:</strong> Pastikan semua video yang Anda upload memiliki <strong>Ratio yang sama</strong>. Menggabungkan video dengan ratio berbeda dapat menyebabkan proses gagal atau hasil video rusak.
+          </div>
+        </div>
+        <div class="file-list-wrapper">
+          <ul id="videoList" class="file-list">
+            <!-- Video items will appear here -->
+          </ul>
+        </div>
+      </div>
+
+      <!-- Audio Section -->
+      <div class="section">
+        <div class="section-title">
+          <span>Audios</span>
+          <div class="title-actions">
+            <button id="clearAudios" class="btn-text">🗑️ Clear All</button>
+            <label class="select-all-wrapper">
+              <input type="checkbox" id="selectAllAudio"> Select All
+            </label>
+          </div>
+        </div>
+        <div id="audioDrop" class="drop-zone">
+          Drag & Drop Audio Files or Click to Browse
+        </div>
+        <div class="file-list-wrapper">
+          <ul id="audioList" class="file-list">
+            <!-- Audio items will appear here -->
+          </ul>
+        </div>
+      </div>
+
+
+      <!-- Logo Overlay Section -->
+      <div class="feature-section">
+        <div class="feature-header">
+          <div class="feature-title-group">
+            <label class="toggle-switch">
+              <input type="checkbox" id="enableLogo">
+              <span class="slider"></span>
+            </label>
+            <span class="feature-title">🖼️ Logo Overlay</span>
+          </div>
+        </div>
+        <div class="feature-content" id="logoContent" style="display: none;">
+          <div class="feature-controls">
+            <div class="input-group">
+              <label for="logoUpload">Logo File</label>
+              <div class="file-upload-wrapper">
+                <button id="logoUploadBtn" class="btn-secondary">📁 Choose Logo</button>
+                <span id="logoFileName" class="file-name-display">No file selected</span>
+              </div>
+            </div>
+            <div class="input-group">
+              <label for="logoPosition">Position</label>
+              <select id="logoPosition">
+                <option value="top-left">Top Left</option>
+                <option value="top-right" selected>Top Right</option>
+                <option value="bottom-left">Bottom Left</option>
+                <option value="bottom-right">Bottom Right</option>
+                <option value="center">Center</option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label for="logoOpacity">Opacity: <span id="logoOpacityValue">100</span>%</label>
+              <input type="range" id="logoOpacity" min="0" max="100" value="100" class="opacity-slider">
+            </div>
+            <div class="input-group">
+              <label for="logoSize">Size: <span id="logoSizeValue">10</span>% of video width</label>
+              <input type="range" id="logoSize" min="1" max="50" value="10" class="opacity-slider">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Auto Caption Section -->
+      <div class="feature-section">
+        <div class="feature-header">
+          <div class="feature-title-group">
+            <label class="toggle-switch">
+              <input type="checkbox" id="enableCaption">
+              <span class="slider"></span>
+            </label>
+            <span class="feature-title">💬 Auto Caption</span>
+          </div>
+        </div>
+        <div class="feature-content" id="captionContent" style="display: none;">
+          <!-- Caption File Upload -->
+          <div class="caption-upload-section">
+            <div class="section-title">
+              <span>Caption Files</span>
+              <div class="title-actions">
+                <button id="clearCaptions" class="btn-text">🗑️ Clear All</button>
+              </div>
+            </div>
+            <div id="captionDrop" class="drop-zone-small">
+              Drag & Drop Caption Files or Click to Browse
+            </div>
+            <div class="file-list-wrapper-small">
+              <ul id="captionList" class="file-list">
+                <!-- Caption items will appear here -->
+              </ul>
+            </div>
+          </div>
+
+          <!-- Caption Controls -->
+          <div class="feature-controls">
+            <div class="input-group">
+              <label for="captionPositionPreset">Position Preset</label>
+              <select id="captionPositionPreset">
+                <option value="bottom" selected>Bottom</option>
+                <option value="middle">Middle</option>
+                <option value="top">Top</option>
+              </select>
+            </div>
+            
+            <div class="input-group">
+              <label for="captionPosition">Fine-tune Position: <span id="captionPositionValue">0</span></label>
+              <input type="range" id="captionPosition" min="0" max="200" value="0" class="opacity-slider">
+              <small style="opacity: 0.7;">0=Bottom, 100=Middle, 200=Top</small>
+            </div>
+            
+            <div class="input-group">
+              <label for="captionStyle">Style</label>
+              <select id="captionStyle">
+                <option value="default" selected>Default</option>
+                <option value="bold">Bold</option>
+                <option value="outline">Outline</option>
+                <option value="shadow">Shadow</option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label for="captionFontSize">Font Size: <span id="captionFontSizeValue">24</span></label>
+              <input type="range" id="captionFontSize" min="8" max="72" value="24" class="opacity-slider">
+            </div>
+          </div>
+
+          <!-- Pairing Status -->
+          <div class="pairing-status" id="pairingStatus" style="display: none;">
+            <h4>📋 Audio-Caption Pairing</h4>
+            <div id="pairingList"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Settings Section (Block A) -->
+      <div class="settings-container">
+        <div class="settings-row">
+          <div class="input-group">
+            <label for="outputName">Output Base Name</label>
+            <input type="text" id="outputName" placeholder="e.g., output_video" value="output_video">
+          </div>
+          <div class="input-group">
+            <label>Output Folder</label>
+            <div class="folder-select-group">
+              <button id="selectFolderBtn" class="btn-secondary">📁 Choose Folder</button>
+            </div>
+          </div>
+          <div class="input-group">
+            <label for="outputCount">Number of Outputs</label>
+            <input type="number" id="outputCount" min="1" value="1">
+          </div>
+          <div class="input-group">
+            <label for="outputRatio">Output Aspect Ratio</label>
+            <select id="outputRatio">
+              <option value="original">Sama dengan Input (Recommended)</option>
+              <option value="9:16">9:16 (TikTok/Reels/Shorts)</option>
+              <option value="16:9">16:9 (YouTube/Widescreen)</option>
+              <option value="1:1">1:1 (Square)</option>
+              <option value="3:4">3:4 (Portrait)</option>
+              <option value="4:3">4:3 (Standard TV)</option>
+              <option value="5:7">5:7 (Tall)</option>
+              <option value="7:5">7:5 (Wide)</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="settings-toggles">
+          <div class="input-group checkbox-group">
+            <label class="toggle-switch">
+              <input type="checkbox" id="muteOriginal">
+              <span class="slider"></span>
+            </label>
+            <label for="muteOriginal">Hapus Suara Video (Mute)</label>
+          </div>
+          <div class="input-group checkbox-group">
+            <label class="toggle-switch">
+              <input type="checkbox" id="autoShuffle" checked>
+              <span class="slider"></span>
+            </label>
+            <label for="autoShuffle">Acak Urutan Video (Shuffle)</label>
+          </div>
+          <button id="stitchBtn" class="btn btn-primary stitch-btn-inline">⚡ Stitch Video</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SPLITTER CONTENT -->
+    <div id="splitter-content" class="tab-content">
+      <div class="section">
+        <div class="section-title">
+          <span>✂️ Video Splitter</span>
+        </div>
+
+        <div class="feature-controls">
+          <!-- Input / Output Paths Group -->
+          <div class="io-paths-panel">
+              <label class="group-label">Input / Output Paths</label>
+              
+              <!-- Video Input -->
+              <div class="input-row">
+                  <button id="splitterFileBtn" class="btn-primary path-btn">📁 Choose Video</button>
+                  <div class="file-info-col">
+                    <span id="splitterFileName" class="file-name-display" style="margin-bottom: 2px;">No file selected</span>
+                    <label id="splitterDurationLabel" style="font-size: 0.8rem; opacity: 0.7; margin: 0;">Duration: --</label>
+                  </div>
+              </div>
+
+              <!-- Output Folder Input -->
+              <div class="input-row" style="margin-top: 10px;">
+                  <button id="splitterFolderBtn" class="btn-secondary path-btn">📁 Output Folder</button>
+                  <div class="file-info-col">
+                    <span id="splitterFolderName" class="file-name-display">Default (Same as input)</span>
+                  </div>
+              </div>
+          </div>
+
+          <!-- Inline Columns Wrapper -->
+          <div class="splitter-columns">
+              <!-- Segments Manager Panel -->
+              <div class="segments-manager-panel" style="flex: 1; min-width: 300px;">
+                 <div class="panel-header">
+                    <label>Segments to Split</label>
+                 </div>
+                 <div id="segmentList" class="segment-list">
+                   <!-- Segment Row Template -->
+                   <div class="segment-row" id="segment-row-0">
+                     <span class="segment-idx">1</span>
+                     <input type="text" class="time-input start-time" placeholder="00:00:00" value="00:00:00">
+                     <span class="arrow">➜</span>
+                     <input type="text" class="time-input end-time" placeholder="00:00:10" value="00:00:10">
+                     <button class="btn-icon remove-segment" onclick="removeSegment(0)" style="visibility: hidden;">❌</button>
+                   </div>
+                 </div>
+                 <button id="addSegmentBtn" class="btn-text">➕ Add Another Segment</button>
+              </div>
+
+              <!-- Output Options Group -->
+              <div class="output-options-group" style="flex: 1; min-width: 250px; margin-top: 0;">
+                 <label class="group-label">Output Options</label>
+                 <div class="settings-toggles">
+                   <div class="input-group checkbox-group">
+                      <label class="toggle-switch">
+                        <input type="checkbox" id="splitterReencode">
+                        <span class="slider"></span>
+                      </label>
+                      <label for="splitterReencode">Re-encode (Precise Mode)</label>
+                   </div>
+                   
+                   <div class="input-group checkbox-group">
+                      <label class="toggle-switch">
+                        <input type="checkbox" id="extractAudio">
+                        <span class="slider"></span>
+                      </label>
+                      <label for="extractAudio">Extract Audio Only (.m4a)</label>
+                   </div>
+                </div>
+              </div>
+
+              <div class="right-aligned-action">
+                  <button id="splitBtn" class="btn btn-primary">✂️ Process Split</button>
+              </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Status Area (Global/Stitcher) -->
+    <div class="status-area">
+      Status: 
+
+      <span id="statusStitcherGroup">
+        <span id="statusText">Idle</span>
+        <button id="openFolderBtn" class="btn btn-secondary" style="display: none; margin-left: 20px;">📁 Open Folder</button>
+      </span>
+      <span id="statusSplitterGroup" style="display: none;">
+        <span id="splitterStatusText">Idle</span>
+        <button id="openSplitterFolderBtn" class="btn btn-secondary" style="display: none; margin-left: 20px;">📁 Open Folder</button>
+      </span>
+    </div>
+
+  </div>
+</body>
+</html>
