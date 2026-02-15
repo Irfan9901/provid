@@ -107,4 +107,3 @@ steps:
     with:
       name: app-${{ matrix.name }}
       path: src-tauri/target/release/bundle
-```
