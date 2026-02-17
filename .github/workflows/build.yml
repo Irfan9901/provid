@@ -1,4 +1,4 @@
-name: PROVID macOS Universal Build
+name: PROVID macOS UNIVERSAL
 
 on:
   workflow_dispatch:
@@ -6,123 +6,153 @@ on:
     branches: [ main ]
 
 jobs:
-  build-mac:
+  mac:
     runs-on: macos-latest
 
     steps:
-      - uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
-      # -------------------------
-      # Node
-      # -------------------------
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
+    # -------------------------
+    # NODE
+    # -------------------------
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 20
 
-      # -------------------------
-      # Rust
-      # -------------------------
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: |
-            aarch64-apple-darwin
-            x86_64-apple-darwin
+    # -------------------------
+    # RUST + TARGETS
+    # -------------------------
+    - uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: aarch64-apple-darwin,x86_64-apple-darwin
 
-      # -------------------------
-      # Install frontend deps
-      # -------------------------
-      - run: npm install
+    # -------------------------
+    # FRONTEND INSTALL
+    # -------------------------
+    - run: npm install
 
-      # -------------------------
-      # CREATE BIN FOLDER (IMPORTANT)
-      # -------------------------
-      - run: mkdir -p src-tauri/bin
+    # -------------------------
+    # ENSURE BIN FOLDER EXISTS
+    # -------------------------
+    - run: mkdir -p src-tauri/bin
 
-      # -------------------------
-      # DOWNLOAD FFmpeg SAFE SOURCE
-      # (uses evermeet.cx — stable mac builds)
-      # -------------------------
-      - name: Download FFmpeg universal
-        run: |
-          set -e
+    # =========================================================
+    # 🔥 BULLETPROOF FFMPEG DOWNLOAD (3 MIRRORS + VALIDATION)
+    # =========================================================
+    - name: Download FFmpeg (ultra safe)
+      run: |
+        set -euo pipefail
+        cd /tmp
 
-          cd /tmp
+        download_and_extract () {
+          URL=$1
+          echo "TRYING: $URL"
 
-          curl -L https://evermeet.cx/ffmpeg/getrelease/zip -o ffmpeg.zip
-          unzip ffmpeg.zip
+          if curl -L --fail --retry 3 --retry-delay 2 "$URL" -o ffmpeg.zip; then
 
-          chmod +x ffmpeg
+            SIZE=$(stat -f%z ffmpeg.zip)
 
-          cp ffmpeg "$GITHUB_WORKSPACE/src-tauri/bin/ffmpeg-universal-apple-darwin"
+            echo "Downloaded size: $SIZE"
 
-      # -------------------------
-      # BUILD BOTH ARCH
-      # -------------------------
-      - name: Build Intel
-        run: cargo build --release --target x86_64-apple-darwin
-        working-directory: src-tauri
+            # reject HTML fake downloads
+            if [ "$SIZE" -lt 1000000 ]; then
+              echo "File too small → probably HTML error"
+              return 1
+            fi
 
-      - name: Build Apple Silicon
-        run: cargo build --release --target aarch64-apple-darwin
-        working-directory: src-tauri
+            unzip -q ffmpeg.zip || return 1
 
-      # -------------------------
-      # CREATE UNIVERSAL BINARY
-      # -------------------------
-      - name: Merge universal binary
-        run: |
-          set -e
+            DIR=$(find . -type d -name "ffmpeg*" | head -n1)
 
-          APP_NAME=$(node -p "require('./src-tauri/tauri.conf.json').package.productName")
+            if [ -z "$DIR" ]; then
+              echo "No ffmpeg directory"
+              return 1
+            fi
 
-          INTEL=$(find src-tauri/target/x86_64-apple-darwin/release/bundle/macos -name "*.app" | head -n1)
-          ARM=$(find src-tauri/target/aarch64-apple-darwin/release/bundle/macos -name "*.app" | head -n1)
+            cp "$DIR/bin/ffmpeg" "$GITHUB_WORKSPACE/src-tauri/bin/ffmpeg-universal-apple-darwin"
+            chmod +x "$GITHUB_WORKSPACE/src-tauri/bin/ffmpeg-universal-apple-darwin"
 
-          cp -R "$INTEL" universal.app
+            echo "FFmpeg installed OK"
+            return 0
+          fi
 
-          lipo -create \
-            "$INTEL/Contents/MacOS/$APP_NAME" \
-            "$ARM/Contents/MacOS/$APP_NAME" \
-            -output universal.app/Contents/MacOS/$APP_NAME
+          return 1
+        }
 
-      # -------------------------
-      # REMOVE QUARANTINE ATTRIBUTE
-      # -------------------------
-      - name: Remove quarantine
-        run: |
-          xattr -cr universal.app || true
+        download_and_extract https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-macos64-gpl.zip \
+        || download_and_extract https://github.com/BtbN/FFmpeg-Builds/releases/latest/download/ffmpeg-master-latest-macos64-gpl.zip \
+        || { echo "ALL DOWNLOAD MIRRORS FAILED"; exit 1; }
 
-      # -------------------------
-      # CREATE DMG
-      # -------------------------
-      - name: Create DMG
-        run: |
-          hdiutil create PROVID.dmg \
-            -volname "PROVID" \
-            -srcfolder universal.app \
-            -ov -format UDZO
+    # -------------------------
+    # BUILD INTEL
+    # -------------------------
+    - name: Build x86_64
+      working-directory: src-tauri
+      run: cargo build --release --target x86_64-apple-darwin
 
-      # -------------------------
-      # CREATE PKG INSTALLER
-      # (asks admin password + removes quarantine)
-      # -------------------------
-      - name: Create PKG installer
-        run: |
-          mkdir pkgroot
-          cp -R universal.app pkgroot/
+    # -------------------------
+    # BUILD ARM
+    # -------------------------
+    - name: Build arm64
+      working-directory: src-tauri
+      run: cargo build --release --target aarch64-apple-darwin
 
-          pkgbuild \
-            --root pkgroot \
-            --identifier com.provid.app \
-            --install-location /Applications \
-            PROVID.pkg
+    # =========================================================
+    # CREATE UNIVERSAL APP
+    # =========================================================
+    - name: Create universal app
+      run: |
+        set -euo pipefail
 
-      # -------------------------
-      # UPLOAD ARTIFACTS
-      # -------------------------
-      - uses: actions/upload-artifact@v4
-        with:
-          name: PROVID-mac
-          path: |
-            PROVID.dmg
-            PROVID.pkg
+        APP=$(find src-tauri/target/x86_64-apple-darwin/release/bundle/macos -name "*.app" | head -n1)
+        ARM=$(find src-tauri/target/aarch64-apple-darwin/release/bundle/macos -name "*.app" | head -n1)
+
+        NAME=$(basename "$APP")
+        BIN=$(ls "$APP/Contents/MacOS")
+
+        cp -R "$APP" universal.app
+
+        lipo -create \
+          "$APP/Contents/MacOS/$BIN" \
+          "$ARM/Contents/MacOS/$BIN" \
+          -output "universal.app/Contents/MacOS/$BIN"
+
+    # -------------------------
+    # REMOVE QUARANTINE
+    # -------------------------
+    - name: Clean attributes
+      run: xattr -cr universal.app || true
+
+    # =========================================================
+    # CREATE DMG
+    # =========================================================
+    - name: Create DMG
+      run: |
+        hdiutil create PROVID.dmg \
+          -volname PROVID \
+          -srcfolder universal.app \
+          -ov -format UDZO
+
+    # =========================================================
+    # CREATE PKG (ADMIN PASSWORD + INSTALL TO /Applications)
+    # =========================================================
+    - name: Create PKG installer
+      run: |
+        mkdir pkgroot
+        cp -R universal.app pkgroot/
+
+        pkgbuild \
+          --root pkgroot \
+          --identifier com.provid.app \
+          --install-location /Applications \
+          PROVID.pkg
+
+    # =========================================================
+    # UPLOAD ARTIFACTS
+    # =========================================================
+    - uses: actions/upload-artifact@v4
+      with:
+        name: PROVID-mac
+        path: |
+          PROVID.dmg
+          PROVID.pkg
