@@ -1,2 +1,7 @@
 src-tauri/bin/*
-src-tauri/bintauri/bin/.keep
+!src-tauri/bin/.gitkeep
+
+target/
+src-tauri/target/
+
+.DS_Store
